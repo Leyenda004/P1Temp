@@ -122,6 +122,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isJumping && jumpTimeCounter < jumpTime)
         {
+            rb.velocity += new Vector2(rb.velocity.x, 0); 
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
             jumpTimeCounter += Time.fixedDeltaTime;//Time.FixedDeltatime para el FixedUpdate 
         }
@@ -136,7 +137,7 @@ public class PlayerMovement : MonoBehaviour
     #region Métodos públicos
     // Documentar cada método que aparece aquí con ///<summary>
     // El convenio de nombres de Unity recomienda que estos métodos
-    // se nombren en formato PascalCase (palabras con primera letra)
+    // se nombren en formato PascalCase (palabras con primera letra
     // mayúscula, incluida la primera letra)
     // Ejemplo: GetPlayerController
 
