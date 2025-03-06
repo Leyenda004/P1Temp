@@ -7,6 +7,7 @@
 
 using System.Globalization;
 using System.Runtime.Serialization.Formatters;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 // Añadir aquí el resto de directivas using
@@ -27,6 +28,7 @@ public class PlayerMovement : MonoBehaviour
     // Ejemplo: MaxHealthPoints
 
     [SerializeField] private float speed = 7f;
+    [SerializeField] private float deceleration = 0.5f;
     [SerializeField] private float jumpForceInitial = 2f;
     [SerializeField] private float jumpForce = 0.1f;
     [SerializeField] private Animator animator;
@@ -47,13 +49,15 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody2D rb;
     private bool isGrounded;
     private GameObject child;
-    private Collider2D childCollider;    
+    private Collider2D childCollider;
+    PlatformMovement platform;
     [SerializeField]
     private float jumpTimeCounter;
     [SerializeField]
     private float jumpTime;
     [SerializeField]
     private bool isJumping;
+    Vector2 moveInput;
  
     #endregion
 
@@ -70,7 +74,7 @@ public class PlayerMovement : MonoBehaviour
     /// </summary>
     void Start()
     {
-        rb = GetComponent<Rigidbody2D>();
+        rb = gameObject.GetComponent<Rigidbody2D>();
         child = transform.GetChild(0).gameObject; // Obtiene el primer hijo directamente
         childCollider = child.GetComponent<Collider2D>(); // Obtiene su Collider2D
     }
@@ -84,8 +88,11 @@ public class PlayerMovement : MonoBehaviour
         if (InputManager.Instance == null) return;
 
         //Obtener el vector de movimiento desde el InputManager.
-        Vector2 moveInput = InputManager.Instance.MovementVector;
-        rb.velocity = new Vector2(moveInput.x * speed, rb.velocity.y);
+        moveInput = InputManager.Instance.MovementVector;
+        //moveInput.x != 0 ? moveInput.x * speed : rb.velocity.x --> si se está pulsando input se mueve, si no, arrastra la velocidad
+        // rb.velocity = new Vector2(moveInput.x * speed, rb.velocity.y);
+        // rb.velocity = new Vector2(moveInput.x != 0 ? moveInput.x * speed : rb.velocity.x * deacceleration, rb.velocity.y);
+        
 
         //Voltear el sprite
         if (moveInput.x != 0)
@@ -96,34 +103,68 @@ public class PlayerMovement : MonoBehaviour
         Collider2D[] hitColliders = Physics2D.OverlapBoxAll(childCollider.bounds.center, childCollider.bounds.size , 0);
 
         isGrounded = false;
+        platform = null;
         foreach (var hitCollider in hitColliders)
         {
             if (hitCollider.gameObject != gameObject && ((1 << hitCollider.gameObject.layer) & ground) != 0)
             {
-            isGrounded = true;
+                isGrounded = true;
+
+                platform = hitCollider.gameObject.GetComponent<PlatformMovement>();
+                
             }
         }
 
+        
+        
+        #endregion
+
         //SALTO
-        if (isGrounded && InputManager.Instance.JumpWasPressedThisFrame())
+        if (isGrounded && InputManager.Instance.JumpWasPressedThisFrame() && !isJumping)
         {
+            Debug.Log("Jump Aptempt"+ rb.velocity.y);
             isJumping = true;
-            rb.velocity += new Vector2(rb.velocity.x, 0); 
-            rb.AddForce(Vector2.up * jumpForceInitial, ForceMode2D.Impulse);
+            //rb.velocity += new Vector2(rb.velocity.x, 0); 
+            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y+ jumpForceInitial);
+            rb.transform.position = new Vector3(transform.position.x,transform.position.y+rb.velocity.y*Time.fixedDeltaTime,transform.position.z);
+            Debug.Log("J: " + rb.velocity.y);
+
             jumpTimeCounter = 0;
         }
-        if (InputManager.Instance.JumpWasReleasedThisFrame())
+        if (InputManager.Instance.JumpWasReleasedThisFrame()&&isJumping)
         {
             isJumping = false;
         }
 
+        
+
+
     }
     void FixedUpdate()
     {
+        #region seteo y cambio de velocidad.x, velocidad.y a las correspondientes de base(no contando salto).
+        if (platform == null)
+        {
+            // si la velocidad mia es mayor a la máxima y no estoy pulsando la tecla de la dir contraria o el 0:
+            if (rb.velocity.x > (moveInput.x * speed) && (rb.velocity.x * moveInput.x) > 0)
+            {
+                //va al fixedUpdate porque si va a más fps, se resta la deceleración más veces/segundo
+                rb.velocity = new Vector2(rb.velocity.x - deceleration, rb.velocity.y);
+            }
+            else
+            {
+                rb.velocity = new Vector2(moveInput.x * speed, rb.velocity.y);
+            }
+
+        }
+        else
+        {
+            rb.velocity = new Vector2(moveInput.x * speed + platform.getVel().x, platform.getVel().y);
+        }
+        #endregion
         if (isJumping && jumpTimeCounter < jumpTime)
         {
-            rb.velocity += new Vector2(rb.velocity.x, 0); 
-            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + jumpForce);
             jumpTimeCounter += Time.fixedDeltaTime;//Time.FixedDeltatime para el FixedUpdate 
         }
         else
@@ -131,35 +172,17 @@ public class PlayerMovement : MonoBehaviour
             isJumping = false;
         }
     }
-    #endregion
+    
 
     // ---- MÉTODOS PÚBLICOS ----
     #region Métodos públicos
     // Documentar cada método que aparece aquí con ///<summary>
     // El convenio de nombres de Unity recomienda que estos métodos
-    // se nombren en formato PascalCase (palabras con primera letra
+    // se nombren en formato PascalCase (palabras con primera letra)
     // mayúscula, incluida la primera letra)
     // Ejemplo: GetPlayerController
 
-    void OnCollisionEnter2D(Collision2D collision)
-    {
-        PlatformMovement platform = collision.gameObject.GetComponent<PlatformMovement>();
-        if (platform != null)
-        {
-            transform.SetParent(platform.gameObject.transform);
-        }
-    }
-
-    void OnCollisionExit2D(Collision2D collision)
-    {
-        PlatformMovement platform = collision.gameObject.GetComponent<PlatformMovement>();
-        if (platform != null)
-        {
-            transform.SetParent(null);
-            // rb.velocity += new Vector2(platform.getVel().x, platform.getVel().y);
-            // Debug.Log(platform.getVel());
-        }
-    }
+    
 
     #endregion
 
