@@ -7,7 +7,7 @@
 //---------------------------------------------------------
 
 using System;
-using UnityEditorInternal;
+//using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -174,6 +174,8 @@ public class LevelManager : MonoBehaviour
         }
         StateTime = 0;
         State = 0;
+        RoomTimeRemaining = RoomMaxTime;
+
 
     }
     public void ChangeState()
@@ -197,6 +199,7 @@ public class LevelManager : MonoBehaviour
         player.transform.position = nextRoomPlayerPos[_room].transform.position;
         levelPlayerPos = nextRoomPlayerPos[_room];
         Camera.transform.position = CameraPos[_room];
+        RoomTimeRemaining = RoomMaxTime;
     }
 
     #endregion
