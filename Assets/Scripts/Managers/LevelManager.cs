@@ -53,10 +53,6 @@ public class LevelManager : MonoBehaviour
     public float StateTime=0f;
     // Variables de cambios de estado (0-Estado Neutral, 1-Estado 1, 2-Estado 2
     public int State = 0;
-    [SerializeField]
-    private bool stateLocked;
-    [SerializeField]
-    private bool timeLocked;
 
     #endregion
 
@@ -101,8 +97,7 @@ public class LevelManager : MonoBehaviour
     
     private void Update()
     {
-        
-        if (!timeLocked && !_grayZone.IsTimeStopped())
+        if (!_grayZone.IsTimeStopped())
         {
             if (RoomTimeRemaining > 0)
             {
@@ -116,26 +111,24 @@ public class LevelManager : MonoBehaviour
             }
 
         }
-        if (!stateLocked)
-        {
+       
             StateTime += Time.deltaTime;
-
-            if (StateTime > StateMaxTime)
+        
+        if (StateTime > StateMaxTime)
+        {
+            for (int i = 0; i < estados.Length; i++)
             {
-                for (int i = 0; i < estados.Length; i++)
-                {
-                    estados[i].CambiaEstado();
-                }
-                ChangeState();
-                StateTime = 0f;
+                estados[i].CambiaEstado();
             }
+            ChangeState();
+            StateTime = 0f;
+        }
 
-            else if (StateTime > ChangeTimeTrasluz && StateTime < StateMaxTime)
+        else if (StateTime > ChangeTimeTrasluz && StateTime < StateMaxTime)
+        {
+            for (int i = 0; i < estados.Length; i++)
             {
-                for (int i = 0; i < estados.Length; i++)
-                {
-                    estados[i].CambiaEstadoTrasLuz();
-                }
+                estados[i].CambiaEstadoTrasLuz();
             }
         }
     }
