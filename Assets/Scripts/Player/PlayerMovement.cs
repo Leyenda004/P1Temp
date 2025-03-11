@@ -33,8 +33,11 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float jumpForceInitial = 2f;
     [SerializeField] private float jumpForce = 0.1f;
     [SerializeField] private float jumpTime;
+    [SerializeField] private float tiempocoyotetime;
     [SerializeField] private Animator animator;
     [SerializeField] private SpriteRenderer spriteRenderer;
+    
+
     public LayerMask ground;
     #endregion
 
@@ -57,12 +60,13 @@ public class PlayerMovement : MonoBehaviour
 
     PlatformMovement platform;
 
-
+    //bools y variables
     private bool isGrounded;
     private bool isJumping;
     private bool justJumped = false; //cuando pasa a true, salta y justo depués se pone a false para no saltar varias veces con un input.
-
+    private bool coyotetime = false;
     private float jumpTimeCounter;
+    private float tiempocoyote = 0f; 
     
     
     Vector2 moveInput;
@@ -130,13 +134,23 @@ public class PlayerMovement : MonoBehaviour
         //    spriteRenderer.color = Color.yellow;
         //}
 
-        //Detección inputs salto
-        if (isGrounded && InputManager.Instance.JumpWasPressedThisFrame())
+        // Coyote Time
+        if (!isGrounded && coyotetime)
         {
+            tiempocoyote += Time.deltaTime;  // Incrementa el tiempo temporizador
 
-            justJumped = true;
-
+            if (tiempocoyote > tiempocoyotetime)
+            {
+                coyotetime = false;  // Termina el Coyote Time cuando temporizador supera el límite
+            }
         }
+        //Detección inputs salto
+        if ((isGrounded || coyotetime) && InputManager.Instance.JumpWasPressedThisFrame())
+         {
+       
+            justJumped = true;
+         }
+        
         else if (InputManager.Instance.JumpWasReleasedThisFrame() && isJumping)
         {
             isJumping = false;
@@ -184,7 +198,7 @@ public class PlayerMovement : MonoBehaviour
         
         isGrounded = false;
         platform = null;
-
+       
         //Detecta si el jumpCollider está colisionando con algo
         Collider2D[] hitColliders = Physics2D.OverlapBoxAll(jumpCollider.bounds.center, jumpCollider.bounds.size, 0);
         foreach (var hitCollider in hitColliders)
@@ -192,9 +206,11 @@ public class PlayerMovement : MonoBehaviour
             if (hitCollider.gameObject != gameObject && ((1 << hitCollider.gameObject.layer) & ground) != 0) //por qué se usa & y no &&?
             {
                 isGrounded = true;
+                coyotetime = true;
+                tiempocoyote = 0f;  
                 if (hitCollider.gameObject.GetComponent<PlatformMovement>() != null && hitCollider.isTrigger)
                 {
-                    platform = hitCollider.gameObject.GetComponent<PlatformMovement>();
+                    platform = hitCollider.gameObject.GetComponent<PlatformMovement>(); 
                 }
             }
         }
@@ -330,6 +346,10 @@ public class PlayerMovement : MonoBehaviour
             jumpTimeCounter = 0;
             justJumped = false;
 
+            if (coyotetime) 
+            {
+                coyotetime = false;
+            }
         }
 
         //salto(continuación)
