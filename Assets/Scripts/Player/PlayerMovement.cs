@@ -32,6 +32,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float deceleration = 0.5f;
     [SerializeField] private float jumpForceInitial = 2f;
     [SerializeField] private float jumpForce = 0.1f;
+    [SerializeField] private float jumpTime;
     [SerializeField] private Animator animator;
     [SerializeField] private SpriteRenderer spriteRenderer;
     public LayerMask ground;
@@ -45,7 +46,7 @@ public class PlayerMovement : MonoBehaviour
     // primera palabra en minúsculas y el resto con la 
     // primera letra en mayúsculas)
     // Ejemplo: _maxHealthPoints
-    
+    private float physicsComparationDistance = 0.001f;
     
     private Rigidbody2D rb;
     private GameObject _child;
@@ -59,10 +60,10 @@ public class PlayerMovement : MonoBehaviour
 
     private bool isGrounded;
     private bool isJumping;
-    private bool justJumped = false;
+    private bool justJumped = false; //cuando pasa a true, salta y justo depués se pone a false para no saltar varias veces con un input.
 
     private float jumpTimeCounter;
-    private float jumpTime;
+    
     
     Vector2 moveInput;
     
@@ -117,21 +118,22 @@ public class PlayerMovement : MonoBehaviour
         {
             spriteRenderer.flipX = moveInput.x < 0;
         }
-
-
+        Debug.Log(new Vector2(upLeftCollider.bounds.center.x + upLeftCollider.bounds.extents.x,0.5f));
+        Debug.DrawRay(new Vector2(upLeftCollider.bounds.center.x + upLeftCollider.bounds.extents.x,transform.position.y), new Vector2(-1 * upLeftCollider.bounds.size.x, 0.5f), Color.red);
         //debug:
-        if (isGrounded)
-        {
-            spriteRenderer.color = Color.white;
-        }
-        else
-        {
-            spriteRenderer.color = Color.yellow;
-        }
+        //if (isGrounded)
+        //{
+        //    spriteRenderer.color = Color.white;
+        //}
+        //else
+        //{
+        //    spriteRenderer.color = Color.yellow;
+        //}
 
         //Detección inputs salto
         if (isGrounded && InputManager.Instance.JumpWasPressedThisFrame())
         {
+
             justJumped = true;
 
         }
@@ -152,6 +154,9 @@ public class PlayerMovement : MonoBehaviour
         SetInitialVelocity();
 
         JumpCalculations();
+
+
+        EdgeAlignment();
         
     }
     #endregion
@@ -259,14 +264,58 @@ public class PlayerMovement : MonoBehaviour
 
         if (Left && !(Right || Center))
         {
-            //estoy pensando en usar un raycast desde aquí para saber la distancia al borde y así colocar al jugador justo en el borde.
+            
+            RaycastHit2D hit = Physics2D.Raycast(new Vector2(upLeftCollider.bounds.center.x+upLeftCollider.bounds.extents.x, upLeftCollider.bounds.center.y + upLeftCollider.bounds.extents.y+physicsComparationDistance),new Vector2(-1,0), upLeftCollider.bounds.size.x, ground);
+            Debug.Log("Left ray casted");
+            if (hit)
+            {
+                transform.Translate (new Vector2(upLeftCollider.bounds.size.x - hit.distance + physicsComparationDistance,0));
+
+
+            }
         }
         else if (Right && !(Left || Center))
         {
+            
+            RaycastHit2D hit = Physics2D.Raycast(new Vector2(upRightCollider.bounds.center.x - upRightCollider.bounds.extents.x, upRightCollider.bounds.center.y + upRightCollider.bounds.extents.y+physicsComparationDistance), new Vector2(1, 0), upRightCollider.bounds.size.x, ground);
+            Debug.Log("Right ray casted");
+            if (hit)
+            {
 
+                transform.Translate(new Vector2( -(upRightCollider.bounds.size.x - hit.distance+physicsComparationDistance), 0));
+
+            }
         }
-    }
+        
+        
+        spriteRenderer.color = Color.white;
 
+        if (Left)
+        {
+            if (Center)
+            {
+                spriteRenderer.color = Color.green;
+            }
+            else
+            {
+                spriteRenderer.color = Color.blue;
+            } 
+        }
+        else if (Right)
+        {
+            if(Center)
+            {
+                spriteRenderer.color = Color.magenta;
+            }
+            else
+            {
+                spriteRenderer.color = Color.red;
+            }
+        }
+        
+
+    }
+    
     /// <summary>
     /// Añade las velocidades necesarias para que el jugador salte.
     /// </summary>
